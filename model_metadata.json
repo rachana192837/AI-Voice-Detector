@@ -1,0 +1,8 @@
+{
+  "model_type": "ImprovedVoiceClassifier",
+  "input_size": 107,
+  "training_samples": 800,
+  "validation_samples": 200,
+  "epochs": 50,
+  "final_metrics": "Check training logs"
+}
