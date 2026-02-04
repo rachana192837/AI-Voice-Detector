@@ -356,40 +356,6 @@ Typical performance metrics:
 
 ---
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Model file not found**
-```
-Error: FileNotFoundError: voice_classifier_best.pth
-Solution: Run `python train_model.py` to train and save the model
-```
-
-**Out of memory during training**
-```
-Solution: Reduce batch size in train_model.py
-```
-
-**Slow API response**
-```
-Solution: 
-- Ensure model is loaded once at startup
-- Use ONNX runtime for faster inference
-- Implement caching for repeated requests
-```
-
-**Low accuracy**
-```
-Solution:
-- Collect more diverse training data
-- Balance your dataset
-- Use data augmentation
-- Try ensemble methods
-```
-
----
-
 ## 🛠️ Technical Stack
 
 - **Framework**: FastAPI
@@ -431,9 +397,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-
-
-
----
-
-Made with ❤️ for accurate AI voice detection
