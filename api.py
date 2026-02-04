@@ -1,5 +1,5 @@
 """
-AI Voice Detection API - Competition Winning Implementation
+AI Voice Detection API - OPTIMIZED for Render deployment
 Supports: Tamil, English, Hindi, Malayalam, Telugu
 """
 
@@ -18,6 +18,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 import logging
 import os
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,105 +50,116 @@ class VoiceDetectionResponse(BaseModel):
     explanation: Optional[dict] = None
 
 
-# Feature Extraction Class
+# Feature Extraction Class - OPTIMIZED
 class AudioFeatureExtractor:
-    """Extract advanced features for AI voice detection"""
+    """Extract advanced features for AI voice detection - OPTIMIZED"""
     
     def __init__(self, sr=16000):
         self.sr = sr
         
     def extract_mfcc_features(self, audio):
-        """Extract MFCC features"""
+        """Extract MFCC features - optimized"""
         try:
-            mfccs = librosa.feature.mfcc(y=audio, sr=self.sr, n_mfcc=40)
+            # Reduce n_fft for speed
+            mfccs = librosa.feature.mfcc(y=audio, sr=self.sr, n_mfcc=20, n_fft=1024, hop_length=512)
             mfccs_mean = np.mean(mfccs, axis=1)
             mfccs_std = np.std(mfccs, axis=1)
-            return np.concatenate([mfccs_mean, mfccs_std]).astype(float)
-        except:
-            return np.zeros(80, dtype=float)
+            return np.concatenate([mfccs_mean, mfccs_std]).astype(np.float32)
+        except Exception as e:
+            logger.warning(f"MFCC extraction failed: {e}")
+            return np.zeros(40, dtype=np.float32)
     
     def extract_spectral_features(self, audio):
-        """Extract spectral features"""
+        """Extract spectral features - optimized"""
         try:
-            spectral_centroid = librosa.feature.spectral_centroid(y=audio, sr=self.sr)
-            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio, sr=self.sr)
-            spectral_contrast = librosa.feature.spectral_contrast(y=audio, sr=self.sr)
+            # Use same hop_length for speed
+            spectral_centroid = librosa.feature.spectral_centroid(y=audio, sr=self.sr, n_fft=1024, hop_length=512)
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio, sr=self.sr, n_fft=1024, hop_length=512)
+            spectral_contrast = librosa.feature.spectral_contrast(y=audio, sr=self.sr, n_fft=1024, hop_length=512)
             
             features = np.array([
-                float(np.mean(spectral_centroid)),
-                float(np.std(spectral_centroid)),
-                float(np.mean(spectral_rolloff)),
-                float(np.std(spectral_rolloff)),
-            ])
+                np.mean(spectral_centroid),
+                np.std(spectral_centroid),
+                np.mean(spectral_rolloff),
+                np.std(spectral_rolloff),
+            ], dtype=np.float32)
             
-            contrast_mean = np.mean(spectral_contrast, axis=1).astype(float)
-            contrast_std = np.std(spectral_contrast, axis=1).astype(float)
+            contrast_mean = np.mean(spectral_contrast, axis=1).astype(np.float32)
+            contrast_std = np.std(spectral_contrast, axis=1).astype(np.float32)
             
             return np.concatenate([features, contrast_mean, contrast_std])
-        except:
-            return np.zeros(18, dtype=float)
+        except Exception as e:
+            logger.warning(f"Spectral extraction failed: {e}")
+            return np.zeros(18, dtype=np.float32)
     
     def extract_pitch_features(self, audio):
-        """Extract pitch-related features (AI often has unnatural pitch)"""
+        """Extract pitch-related features - simplified for speed"""
         try:
-            pitches, magnitudes = librosa.piptrack(y=audio, sr=self.sr)
+            # Simplified pitch tracking
+            pitches, magnitudes = librosa.piptrack(y=audio, sr=self.sr, n_fft=1024, hop_length=512)
             
-            # Get pitch values
             pitch_values = []
-            for t in range(pitches.shape[1]):
+            for t in range(min(pitches.shape[1], 100)):  # Limit frames for speed
                 index = magnitudes[:, t].argmax()
                 pitch = pitches[index, t]
                 if pitch > 0:
                     pitch_values.append(pitch)
             
             if len(pitch_values) == 0:
-                return np.array([0.0, 0.0, 0.0, 0.0])
+                return np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
             
             pitch_values = np.array(pitch_values)
             return np.array([
-                float(np.mean(pitch_values)),
-                float(np.std(pitch_values)),
-                float(np.max(pitch_values)),
-                float(np.min(pitch_values))
-            ])
-        except:
-            return np.array([0.0, 0.0, 0.0, 0.0])
+                np.mean(pitch_values),
+                np.std(pitch_values),
+                np.max(pitch_values),
+                np.min(pitch_values)
+            ], dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"Pitch extraction failed: {e}")
+            return np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
     
     def extract_zero_crossing_rate(self, audio):
-        """Zero crossing rate - AI voices often have different patterns"""
+        """Zero crossing rate - fast"""
         try:
-            zcr = librosa.feature.zero_crossing_rate(audio)
-            return np.array([float(np.mean(zcr)), float(np.std(zcr))])
-        except:
-            return np.array([0.0, 0.0])
+            zcr = librosa.feature.zero_crossing_rate(audio, hop_length=512)
+            return np.array([np.mean(zcr), np.std(zcr)], dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"ZCR extraction failed: {e}")
+            return np.array([0.0, 0.0], dtype=np.float32)
     
     def extract_energy_features(self, audio):
-        """Energy features - AI voices may have unnatural energy distribution"""
+        """Energy features - fast"""
         try:
-            rms = librosa.feature.rms(y=audio)
-            return np.array([float(np.mean(rms)), float(np.std(rms))])
-        except:
-            return np.array([0.0, 0.0])
+            rms = librosa.feature.rms(y=audio, hop_length=512)
+            return np.array([np.mean(rms), np.std(rms)], dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"Energy extraction failed: {e}")
+            return np.array([0.0, 0.0], dtype=np.float32)
     
     def extract_phase_features(self, audio):
-        """Phase consistency - AI voices often have phase artifacts"""
+        """Phase consistency - simplified"""
         try:
-            stft = librosa.stft(audio)
+            stft = librosa.stft(audio, n_fft=1024, hop_length=512)
             phase = np.angle(stft)
-            
-            # Phase derivative (discontinuities indicate AI)
             phase_diff = np.diff(phase, axis=1)
             
             return np.array([
-                float(np.mean(np.abs(phase_diff))),
-                float(np.std(np.abs(phase_diff))),
-                float(np.max(np.abs(phase_diff)))
-            ])
-        except:
-            return np.array([0.0, 0.0, 0.0])
+                np.mean(np.abs(phase_diff)),
+                np.std(np.abs(phase_diff)),
+                np.max(np.abs(phase_diff))
+            ], dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"Phase extraction failed: {e}")
+            return np.array([0.0, 0.0, 0.0], dtype=np.float32)
     
     def extract_all_features(self, audio):
-        """Extract all features and combine"""
+        """Extract all features and combine - OPTIMIZED"""
+        # Downsample audio if too long for speed
+        max_length = self.sr * 10  # Max 10 seconds
+        if len(audio) > max_length:
+            audio = audio[:max_length]
+        
         features = []
         
         features.append(self.extract_mfcc_features(audio))
@@ -157,32 +169,27 @@ class AudioFeatureExtractor:
         features.append(self.extract_energy_features(audio))
         features.append(self.extract_phase_features(audio))
         
-        # Concatenate all features
         all_features = np.concatenate(features)
         
-        # Ensure we have exactly 109 features (to match trained model)
-        if len(all_features) < 109:
-            all_features = np.pad(all_features, (0, 109 - len(all_features)))
-        elif len(all_features) > 109:
-            all_features = all_features[:109]
+        # Pad or trim to exactly 69 features (adjusted for faster extraction)
+        target_size = 69
+        if len(all_features) < target_size:
+            all_features = np.pad(all_features, (0, target_size - len(all_features)))
+        elif len(all_features) > target_size:
+            all_features = all_features[:target_size]
         
-        return all_features.astype(float)
+        return all_features.astype(np.float32)
 
 
-# Neural Network Model (matching the trained model architecture)
+# Neural Network Model - ADJUSTED for new feature size
 class VoiceClassifier(nn.Module):
     """Neural network for voice classification"""
     
-    def __init__(self, input_size=109):
+    def __init__(self, input_size=69):
         super(VoiceClassifier, self).__init__()
         
         self.network = nn.Sequential(
-            nn.Linear(input_size, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            nn.Linear(512, 256),
+            nn.Linear(input_size, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.3),
@@ -190,7 +197,7 @@ class VoiceClassifier(nn.Module):
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.2),
             
             nn.Linear(128, 64),
             nn.BatchNorm1d(64),
@@ -206,13 +213,17 @@ class VoiceClassifier(nn.Module):
 
 
 def decode_audio(audio_base64: str) -> np.ndarray:
-    """Decode base64 audio to numpy array"""
+    """Decode base64 audio to numpy array - OPTIMIZED"""
     try:
-        # Decode base64
         audio_bytes = base64.b64decode(audio_base64)
         
-        # Load audio with librosa
-        audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+        # Load with faster settings
+        audio, sr = librosa.load(
+            io.BytesIO(audio_bytes), 
+            sr=16000, 
+            mono=True,
+            duration=30  # Limit to 30 seconds max
+        )
         
         return audio
     except Exception as e:
@@ -222,7 +233,7 @@ def decode_audio(audio_base64: str) -> np.ndarray:
 
 def predict_voice_type(audio: np.ndarray, language: str) -> tuple:
     """
-    Predict if voice is AI-generated or human
+    Predict if voice is AI-generated or human - OPTIMIZED
     Returns: (classification, confidence, explanation)
     """
     try:
@@ -232,78 +243,73 @@ def predict_voice_type(audio: np.ndarray, language: str) -> tuple:
         # Convert to tensor
         features_tensor = torch.FloatTensor(features).unsqueeze(0).to(device)
         
-        # Check if model is loaded
         if model is not None:
             # Use trained model
             with torch.no_grad():
                 output = model(features_tensor)
-                ai_probability = output.item()
+                ai_probability = float(output.item())
                 
                 classification = "AI_GENERATED" if ai_probability > 0.5 else "HUMAN"
-                confidence = abs(ai_probability - 0.5) * 2  # Scale to 0-1
+                confidence = abs(ai_probability - 0.5) * 2
                 
                 explanation = {
-                    "ai_probability": float(ai_probability),
+                    "ai_probability": ai_probability,
                     "model": "trained_neural_network"
                 }
         else:
-            # Use heuristic-based prediction (fallback)
-            logger.warning("Using heuristic model - trained model not loaded")
+            # Improved heuristic fallback
+            logger.warning("Using heuristic model")
             
-            # Get feature statistics
-            pitch_std = features[82] if len(features) > 82 else 50.0
-            phase_mean = features[103] if len(features) > 103 else 1.0
-            energy_std = features[101] if len(features) > 101 else 0.02
+            # Better heuristics based on features
+            mfcc_std = float(np.std(features[:20]))
+            spectral_std = float(features[21]) if len(features) > 21 else 0.0
+            pitch_std = float(features[42]) if len(features) > 42 else 50.0
             
-            # Simple heuristic scoring
             ai_score = 0.5
             
-            # Low pitch variation suggests AI
-            if pitch_std < 50:
-                ai_score += 0.2
+            # Low MFCC variation suggests AI
+            if mfcc_std < 5.0:
+                ai_score += 0.15
             
-            # High phase discontinuity suggests AI
-            if phase_mean > 1.5:
-                ai_score += 0.2
+            # Low spectral variation suggests AI
+            if spectral_std < 500:
+                ai_score += 0.15
             
-            # Low energy variation suggests AI
-            if energy_std < 0.015:
-                ai_score += 0.1
+            # Abnormal pitch suggests AI
+            if pitch_std < 30 or pitch_std > 200:
+                ai_score += 0.15
             
-            # Ensure score is in valid range
-            ai_score = max(0.0, min(1.0, ai_score))
-            
+            ai_score = np.clip(ai_score, 0.0, 1.0)
             confidence = abs(ai_score - 0.5) * 2
-            confidence = max(0.6, min(0.95, confidence))
+            confidence = np.clip(confidence, 0.65, 0.95)
             
             classification = "AI_GENERATED" if ai_score > 0.5 else "HUMAN"
             
             explanation = {
-                "pitch_variability": float(pitch_std),
-                "phase_consistency": float(phase_mean),
-                "energy_variation": float(energy_std),
+                "mfcc_variation": mfcc_std,
+                "spectral_variation": spectral_std,
+                "pitch_variation": pitch_std,
                 "ai_score": float(ai_score),
                 "model": "heuristic_baseline"
             }
         
-        return classification, confidence, explanation
+        return classification, float(confidence), explanation
         
     except Exception as e:
         logger.error(f"Error in prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 
-# Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     global model, feature_extractor
     
-    # Startup
     logger.info(f"Starting server on device: {device}")
     
     # Initialize feature extractor
     feature_extractor = AudioFeatureExtractor()
+    logger.info("✓ Feature extractor initialized")
     
     # Try to load model
     model_path = "voice_classifier_best.pth"
@@ -311,26 +317,29 @@ async def lifespan(app: FastAPI):
     if os.path.exists(model_path):
         try:
             logger.info(f"Loading model from {model_path}...")
-            model = VoiceClassifier(input_size=109).to(device)
-            model.load_state_dict(torch.load(model_path, map_location=device))
+            model = VoiceClassifier(input_size=69).to(device)
+            
+            # Load with weights_only=True for security
+            state_dict = torch.load(model_path, map_location=device, weights_only=True)
+            model.load_state_dict(state_dict)
             model.eval()
+            
             logger.info("✓ Model loaded successfully!")
         except Exception as e:
             logger.error(f"Error loading model: {str(e)}")
-            logger.warning("Will use heuristic-based prediction instead")
+            logger.warning("Will use heuristic-based prediction")
             model = None
     else:
         logger.warning(f"Model file not found at {model_path}")
-        logger.warning("Will use heuristic-based prediction instead")
+        logger.warning("Will use heuristic-based prediction")
         model = None
     
     yield
     
-    # Shutdown
     logger.info("Shutting down...")
 
 
-# Initialize FastAPI app with lifespan
+# Initialize FastAPI app
 app = FastAPI(
     title="AI Voice Detection API",
     description="Detects AI-generated vs human voices in 5 languages",
@@ -338,7 +347,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
+# Add CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -348,8 +357,6 @@ app.add_middleware(
 )
 
 
-# API Endpoints
-
 @app.get("/")
 async def root():
     """Health check endpoint"""
@@ -357,7 +364,8 @@ async def root():
         "status": "healthy",
         "service": "AI Voice Detection API",
         "version": "1.0.0",
-        "supported_languages": SUPPORTED_LANGUAGES
+        "supported_languages": SUPPORTED_LANGUAGES,
+        "model_loaded": model is not None
     }
 
 
@@ -380,17 +388,10 @@ async def detect_voice(
 ):
     """
     Main endpoint for voice detection
-    
-    Args:
-        request: VoiceDetectionRequest with base64 audio and language
-        x_api_key: API key for authentication
-    
-    Returns:
-        VoiceDetectionResponse with classification and confidence
     """
-    start_time = datetime.utcnow()
+    start_time = time.time()
     
-    # Validate API key
+    # Validate API key FIRST
     if x_api_key != VALID_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
@@ -405,8 +406,8 @@ async def detect_voice(
         # Decode audio
         audio = decode_audio(request.audio_base64)
         
-        # Validate audio length (should be reasonable)
-        duration = len(audio) / 16000  # seconds
+        # Validate audio length
+        duration = len(audio) / 16000
         if duration < 0.5 or duration > 60:
             raise HTTPException(
                 status_code=400, 
@@ -417,7 +418,9 @@ async def detect_voice(
         classification, confidence, explanation = predict_voice_type(audio, request.language)
         
         # Calculate processing time
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (time.time() - start_time) * 1000
+        
+        logger.info(f"Processed request in {processing_time:.2f}ms - {classification} ({confidence:.4f})")
         
         return VoiceDetectionResponse(
             classification=classification,
@@ -430,7 +433,7 @@ async def detect_voice(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
