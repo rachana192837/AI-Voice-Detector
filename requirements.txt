@@ -8,14 +8,17 @@ librosa==0.10.1
 soundfile==0.12.1
 audioread==3.0.1
 
-# Machine Learning (CPU-only versions)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.2+cpu
-torchaudio==2.1.2+cpu
-
+# Machine Learning
+torch==2.1.2
+torchaudio==2.1.2
 numpy==1.24.3
 scikit-learn==1.4.0
 
 # Utilities
 python-multipart==0.0.6
 tqdm==4.66.1
+
+# Optional (for advanced features)
+# transformers==4.37.0  # For Wav2Vec2/HuBERT
+# onnxruntime==1.17.0  # For optimized inference
+# redis==5.0.1  # For cachin
