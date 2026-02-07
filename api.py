@@ -34,11 +34,13 @@ feature_extractor = None
 
 # Request/Response Models
 class VoiceDetectionRequest(BaseModel):
-    audio_base64: str = Field(..., description="Base64-encoded MP3 audio")
+    audio_base64: str = Field(..., alias='audioBase64', description="Base64-encoded MP3 audio")
     language: Literal["tamil", "english", "hindi", "malayalam", "telugu"] = Field(
         default="english", 
         description="Language of the audio sample"
     )
+    class Config:
+        populate_by_name = True
 
 class VoiceDetectionResponse(BaseModel):
     classification: Literal["AI_GENERATED", "HUMAN"]
